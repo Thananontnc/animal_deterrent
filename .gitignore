@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+
+# Downloaded by ultralytics on first run
+*.pt
+*_ncnn_model/
+runs/
+
+# Local test media
+*.mp4
+*.avi
