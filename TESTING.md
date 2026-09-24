@@ -90,7 +90,7 @@ system pauses, which is correct.
 | 4.3 | Move the cat to the left side of the video window, then the right | `pan` in the terminal is negative on the left and positive on the right | [ ] |
 | 4.4 | Move the cat to the top of the video window, then the bottom | `tilt` is positive at the top and negative at the bottom | [ ] |
 | 4.5 | Show a dog photo | `SPRAYING` | [ ] |
-| 4.6 | Show a bird photo | `SPRAYING` | [ ] |
+| 4.6 | Show a bird photo | `IDLE`. Birds are not in `ANIMAL_CLASSES` | [ ] |
 | 4.7 | Show the cat photo, then step into view | `PAUSED` at once. Terminal prints `STOP spray` if it was spraying | [ ] |
 | 4.8 | Real pet, if you have one | `SPRAYING` | [ ] |
 

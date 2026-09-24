@@ -1,13 +1,37 @@
-"""YOLOv8 object detection.
+"""YOLO object detection.
 
 Wraps the ultralytics model and returns plain Detection objects, so no other
 module needs to know about ultralytics types.
 """
 
+import platform
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 from ultralytics import YOLO
+
+
+def is_raspberry_pi():
+    return platform.system() == "Linux" and platform.machine() in ("aarch64", "armv7l")
+
+
+def load_model(model_path, image_size, use_ncnn):
+    """Load YOLO weights, optionally as an NCNN model for faster ARM inference.
+
+    With `use_ncnn`, a .pt model is exported once to a folder next to it
+    (e.g. yolo26s_640_ncnn_model) and that folder is loaded on later runs.
+    """
+    if not use_ncnn or not str(model_path).endswith(".pt"):
+        return YOLO(model_path)
+
+    ncnn_dir = Path(model_path).with_name(f"{Path(model_path).stem}_{image_size}_ncnn_model")
+    if not ncnn_dir.exists():
+        print(f"First run: converting {model_path} to NCNN at size {image_size}. "
+              "This takes a few minutes and only happens once.")
+        exported = YOLO(model_path).export(format="ncnn", imgsz=image_size)
+        Path(exported).rename(ncnn_dir)
+    return YOLO(str(ncnn_dir), task="detect")
 
 
 @dataclass(frozen=True)
@@ -18,13 +42,13 @@ class Detection:
 
 
 class Detector:
-    def __init__(self, model_path, class_names, min_confidence, image_size=640):
+    def __init__(self, model_path, class_names, min_confidence, image_size=640, use_ncnn=False):
         """Load the model and limit detection to `class_names`.
 
         `min_confidence` is the lowest confidence YOLO reports. Per-class
         thresholds are applied later in decision.py.
         """
-        self.model = YOLO(model_path)
+        self.model = load_model(model_path, image_size, use_ncnn)
         self.min_confidence = min_confidence
         self.image_size = image_size
 

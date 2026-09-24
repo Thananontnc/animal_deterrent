@@ -6,18 +6,26 @@ Edit values here rather than in the other modules.
 # --- Detection -------------------------------------------------------------
 
 # YOLO weights file. ultralytics downloads it automatically on first run.
-MODEL_PATH = "yolov8n.pt"
+# yolo11s was the most accurate of 8 setups tested on garden dog and cat
+# videos (dog found in 85% of frames, cat in 95%; yolov8n: 62% and 39%).
+# If the Pi is too slow, use "yolo26n.pt" with IMAGE_SIZE = 960 (see PI_SETUP.md).
+MODEL_PATH = "yolo11s.pt"
 
-# Image size YOLO resizes frames to. 640 is the model default; 320 is
-# roughly 3-4x faster and is worth trying on the Raspberry Pi 5.
+# Image size YOLO resizes frames to. Larger finds far-away animals better
+# but runs slower.
 IMAGE_SIZE = 640
 
 # COCO class names that count as "animals to spray". Must match names in the
 # model exactly (see detection.py for the check). Other COCO animals:
-# "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe".
-ANIMAL_CLASSES = ["cat", "dog", "bird"]
+# "bird", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe".
+ANIMAL_CLASSES = ["cat", "dog"]
 
 PERSON_CLASS = "person"
+
+# On a Raspberry Pi, convert the model once to NCNN format and use that.
+# NCNN runs several times faster than the default PyTorch model on ARM CPUs.
+# Has no effect on Windows or Mac.
+USE_NCNN_ON_RASPBERRY_PI = True
 
 # Minimum confidence for an animal detection to trigger a spray.
 CONFIDENCE_THRESHOLD = 0.5

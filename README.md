@@ -1,6 +1,6 @@
 # Animal Deterrent
 
-A camera watches the yard and a YOLOv8n model looks for animals. If it sees
+A camera watches the yard and a YOLO11s model looks for animals. If it sees
 an animal and no person is in frame, the system aims a nozzle at the animal
 and sprays water.
 
@@ -13,15 +13,17 @@ Raspberry Pi 5 with few changes (see [Connecting real hardware](#connecting-real
 | File | What it does |
 |------|--------------|
 | `config.py` | Every tunable value: animal classes, confidence thresholds, cooldown, debounce, spray duration, camera index, model file, servo direction. |
-| `detection.py` | Loads YOLOv8n (ultralytics). `Detector.detect(frame)` returns a list of `Detection(class_name, confidence, bbox=(x1, y1, x2, y2))`. Only reports the animal classes and `person`. |
+| `detection.py` | Loads the YOLO model (ultralytics). On a Raspberry Pi it converts the model once to the faster NCNN format. `Detector.detect(frame)` returns a list of `Detection(class_name, confidence, bbox=(x1, y1, x2, y2))`. Only reports the animal classes and `person`. |
 | `targeting.py` | `bbox_center(bbox)` gives the target pixel. `pan_tilt_offset(...)` turns that pixel into a pan/tilt offset from the frame center, each from -1.0 to 1.0. |
 | `decision.py` | `DecisionEngine.update(detections, w, h)` returns `PAUSE`, `SPRAY` (with target) or `IDLE`. It applies the person rule, the cooldown and the debounce. |
 | `hardware.py` | The `Hardware` interface (`aim`, `spray`, `stop_spray`, `close`) and `MockHardware`, which only prints. |
 | `camera.py` | Frame sources: webcam, video file, or still image. |
 | `main.py` | The live loop. Reads frames, runs detection and decision, calls the hardware, and shows the annotated video window. |
 | `test_decision.py` | Unit tests for the decision rules and timing, using a fake clock. |
+| `evaluate.py` | Measures detection accuracy on a video clip: detection rate, confidence, misses, false positives, and how many sprays would fire. |
 | `requirements.txt` | Pinned versions of `ultralytics` and `opencv-python`. |
 | `TESTING.md` | Step-by-step live test plan using a phone as the camera. |
+| `PI_SETUP.md` | Step-by-step Raspberry Pi 5 setup, from a blank SD card to a first test. |
 
 ## Decision rules
 
@@ -65,7 +67,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-The first run downloads `yolov8n.pt` (about 6 MB) into the current folder.
+The first run downloads `yolo11s.pt` (about 18 MB) into the current folder.
 
 ## Running
 
@@ -93,6 +95,32 @@ Run the decision tests:
 ```bash
 python -m unittest test_decision -v
 ```
+
+## Measuring accuracy on a video
+
+Put the clip in the project folder, then run:
+
+```bash
+python evaluate.py test_dog.mp4 --expect dog
+python evaluate.py test_cat.mp4 --expect cat --save test_cat_annotated.mp4
+```
+
+It prints:
+
+- **Spray-level detection:** frames where the animal scored at least
+  `CONFIDENCE_THRESHOLD`.
+- **Weak only:** frames where the model saw the animal, but not confidently
+  enough to spray. Many weak frames suggest lowering `CONFIDENCE_THRESHOLD`.
+- **Not detected at all:** possible misses.
+- **Longest stretch without a spray-level detection:** how long the animal
+  could stay in the yard untouched.
+- **Other classes detected:** a cat called a dog (harmless, since it still
+  sprays), or a false `person` (it pauses the system).
+- **Sprays the system would fire:** counted in video time.
+
+The script assumes the animal is in view for the whole clip. Frames where it
+walks out of view count as misses. Use `--save` and watch the annotated video
+to check.
 
 ## No webcam? Use your phone as the camera
 
@@ -123,8 +151,8 @@ spray path:
   `IDLE` with a cooldown countdown, then `SPRAYING` again every 5 s. A
   known-good test photo with two cats:
   http://images.cocodataset.org/val2017/000000039769.jpg
-- **Video:** `python main.py --source dog_video.mp4`. Any cat, dog or bird
-  clip works.
+- **Video:** `python main.py --source test_dog.mp4`. Any cat or dog clip
+  works. To measure accuracy on a clip, use `evaluate.py` (below).
 - **Phone or monitor held up to the webcam:** show a cat photo on your phone
   with your own body out of frame. This tests the real camera path. If any
   part of you is visible, the system pauses, which is correct.
@@ -208,8 +236,8 @@ Notes for the Raspberry Pi 5:
   `release()` methods, and return it from `open_source()`. Install picamera2
   with `sudo apt install python3-picamera2`. Then create the venv with
   `python3 -m venv --system-site-packages .venv` so the venv can see it.
-- **Speed:** YOLOv8n on the Pi 5 CPU runs at a few frames per second. To
-  speed it up, set `IMAGE_SIZE = 320` in `config.py`. You can also export the
-  model to NCNN with `yolo export model=yolov8n.pt format=ncnn`, then set
-  `MODEL_PATH = "yolov8n_ncnn_model"`.
+- **Speed:** on the Pi, the model is converted automatically to NCNN on the
+  first run (`USE_NCNN_ON_RASPBERRY_PI` in `config.py`). NCNN is several
+  times faster on ARM processors. If it is still too slow, see "If it is too
+  slow" in `PI_SETUP.md`.
 - **No monitor:** run `python main.py --headless` over SSH or as a service.

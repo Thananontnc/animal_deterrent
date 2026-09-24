@@ -17,7 +17,7 @@ import cv2
 import config
 from camera import open_source
 from decision import Action, DecisionEngine
-from detection import Detector
+from detection import Detector, is_raspberry_pi
 from hardware import create_hardware
 
 WINDOW_NAME = "Animal Deterrent"
@@ -73,6 +73,7 @@ def main():
         [*config.ANIMAL_CLASSES, config.PERSON_CLASS],
         min(config.CONFIDENCE_THRESHOLD, config.PERSON_CONFIDENCE_THRESHOLD),
         config.IMAGE_SIZE,
+        use_ncnn=config.USE_NCNN_ON_RASPBERRY_PI and is_raspberry_pi(),
     )
     engine = DecisionEngine(
         animal_classes=config.ANIMAL_CLASSES,
